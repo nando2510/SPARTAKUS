@@ -1,0 +1,6 @@
+@import url("../styles.css");
+
+/* The published site stores its images at the repository root. */
+.hero-image {
+  background-image: url("../entrenamiento-grupal.jpeg");
+}
