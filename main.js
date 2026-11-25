@@ -6,6 +6,7 @@
   const navigation = document.querySelector(".primary-nav");
   const contactForm = document.querySelector("#contact-form");
   const whatsappNumber = "573157210718";
+  const mobileNavigation = window.matchMedia("(max-width: 980px)");
 
   const updateHeader = () => {
     header?.classList.toggle("is-scrolled", window.scrollY > 24);
@@ -14,29 +15,57 @@
   updateHeader();
   window.addEventListener("scroll", updateHeader, { passive: true });
 
-  const closeMenu = () => {
+  const closeMenu = ({ returnFocus = false } = {}) => {
     if (!menuToggle || !navigation) return;
     menuToggle.setAttribute("aria-expanded", "false");
     menuToggle.setAttribute("aria-label", "Abrir menú de navegación");
     navigation.classList.remove("is-open");
     document.body.classList.remove("menu-open");
+    if (returnFocus) menuToggle.focus();
+  };
+
+  const openMenu = () => {
+    if (!menuToggle || !navigation || !mobileNavigation.matches) return;
+    menuToggle.setAttribute("aria-expanded", "true");
+    menuToggle.setAttribute("aria-label", "Cerrar menú de navegación");
+    navigation.classList.add("is-open");
+    document.body.classList.add("menu-open");
   };
 
   menuToggle?.addEventListener("click", () => {
     const isOpen = menuToggle.getAttribute("aria-expanded") === "true";
-    menuToggle.setAttribute("aria-expanded", String(!isOpen));
-    menuToggle.setAttribute("aria-label", isOpen ? "Abrir menú de navegación" : "Cerrar menú de navegación");
-    navigation?.classList.toggle("is-open", !isOpen);
-    document.body.classList.toggle("menu-open", !isOpen);
+    if (isOpen) closeMenu();
+    else openMenu();
   });
 
-  navigation?.querySelectorAll("a").forEach((link) => {
-    link.addEventListener("click", closeMenu);
+  navigation?.querySelectorAll('a[href^="#"]').forEach((link) => {
+    link.addEventListener("click", () => closeMenu());
+  });
+
+  document.addEventListener("click", (event) => {
+    if (
+      menuToggle?.getAttribute("aria-expanded") === "true" &&
+      !navigation?.contains(event.target) &&
+      !menuToggle.contains(event.target)
+    ) {
+      closeMenu();
+    }
   });
 
   document.addEventListener("keydown", (event) => {
-    if (event.key === "Escape") closeMenu();
+    if (event.key === "Escape" && menuToggle?.getAttribute("aria-expanded") === "true") {
+      closeMenu({ returnFocus: true });
+    }
   });
+
+  const handleViewportChange = (event) => {
+    if (!event.matches) closeMenu();
+  };
+  if (mobileNavigation.addEventListener) {
+    mobileNavigation.addEventListener("change", handleViewportChange);
+  } else {
+    mobileNavigation.addListener(handleViewportChange);
+  }
 
   const revealItems = document.querySelectorAll(".reveal");
   if ("IntersectionObserver" in window) {
@@ -57,6 +86,7 @@
   emailButton?.addEventListener("click", async () => {
     const email = "nandoalahia@gmail.com";
     const status = document.querySelector(".copy-status");
+    if (!status) return;
     try {
       await navigator.clipboard.writeText(email);
       status.textContent = "Correo copiado";
@@ -90,17 +120,18 @@
   };
 
   const validateField = (field) => {
+    if (!field.input) return false;
     const error = field.validate(field.input.value);
     const wrapper = field.input.closest(".form-field");
-    field.message.textContent = error;
-    wrapper.classList.toggle("has-error", Boolean(error));
+    if (field.message) field.message.textContent = error;
+    wrapper?.classList.toggle("has-error", Boolean(error));
     field.input.setAttribute("aria-invalid", String(Boolean(error)));
     return !error;
   };
 
   Object.values(fields).forEach((field) => {
-    field.input.addEventListener("input", () => validateField(field));
-    field.input.addEventListener("change", () => validateField(field));
+    field.input?.addEventListener("input", () => validateField(field));
+    field.input?.addEventListener("change", () => validateField(field));
   });
 
   contactForm.addEventListener("submit", (event) => {
@@ -108,7 +139,7 @@
     const isValid = Object.values(fields).map(validateField).every(Boolean);
     const feedback = document.querySelector("#form-feedback");
     if (!isValid) {
-      feedback.textContent = "Revisa los campos marcados antes de continuar.";
+      if (feedback) feedback.textContent = "Revisa los campos marcados antes de continuar.";
       contactForm.querySelector('[aria-invalid="true"]')?.focus();
       return;
     }
@@ -122,7 +153,7 @@
       `Servicio: ${formData.get("service").toString()}`,
       `Mensaje: ${formData.get("message").toString().trim()}`
     ].join("\n");
-    feedback.textContent = "Abriendo WhatsApp con tu mensaje...";
+    if (feedback) feedback.textContent = "Abriendo WhatsApp con tu mensaje...";
     window.open(`https://wa.me/${whatsappNumber}?text=${encodeURIComponent(message)}`, "_blank", "noopener,noreferrer");
   });
 })();
